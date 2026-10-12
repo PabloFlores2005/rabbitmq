@@ -1,0 +1,28 @@
+{
+  "name": "rabbitmq",
+  "version": "1.0.0",
+  "description": "Basic Publisher/Consumer project",
+  "type": "module",
+  "scripts": {
+    "producer": "node src/producer.js",
+    "consumer": "node src/consumer.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PabloFlores2005/rabbitmq.git"
+  },
+  "author": "Pablo Flores",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PabloFlores2005/rabbitmq/issues"
+  },
+  "homepage": "https://github.com/PabloFlores2005/rabbitmq#readme",
+  "dependencies": {
+    "amqplib": "^2.2.0",
+    "dotenv": "^18.0.7",
+    "pino": "^10.4.0"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.2.0"
+  }
+}
