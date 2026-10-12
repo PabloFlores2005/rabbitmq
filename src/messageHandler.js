@@ -35,6 +35,8 @@ export function createMessageHandler({ channel, log, processMessage }) {
       sequence: message.payload.sequence,
     };
 
+    log.info(context, 'message received');
+
     try {
       await processMessage(message);
     } catch (err) {

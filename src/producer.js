@@ -1,11 +1,11 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import pino from 'pino';
 import { loadConfig } from './config.js';
-import { connect, createConfirmChannel, closeQuietly } from './queue/connection.js';
-import { assertQueue } from './queue/queue.js';
+import { connect, createConfirmChannel, closeQuietly } from './rabbitmq/connection.js';
+import { assertQueue } from './rabbitmq/queue.js';
 import { buildTrafficMessage } from './messages.js';
-import { publishPersistent } from './publisher.js';
-
+import { publishMessage } from './publisher.js';
+ 
 let config;
 try {
   config = loadConfig();
@@ -13,7 +13,8 @@ try {
   console.error(`Configuration error: ${err.message}`);
   process.exit(1);
 }
-
+ 
+// Structured JSON logs by default
 const log = pino({
   name: 'producer',
   level: config.log.level,
@@ -24,7 +25,7 @@ const log = pino({
     },
   }),
 });
-
+ 
 async function main() {
   const { queueName, producer } = config;
   let connection;
@@ -33,30 +34,32 @@ async function main() {
   let attempted = 0;
   let confirmed = 0;
   let failed = 0;
-
+ 
+  // Graceful shutdown: finish the in-flight message, then clean up.
   const requestStop = (signal) => {
     log.warn({ signal }, 'stop requested, finishing current message');
     stopRequested = true;
   };
   process.once('SIGINT', () => requestStop('SIGINT'));
   process.once('SIGTERM', () => requestStop('SIGTERM'));
-
+ 
   try {
     connection = await connect(config.rabbitmq, log);
     channel = await createConfirmChannel(connection, log);
-
+ 
     const { messageCount, consumerCount } = await assertQueue(channel, queueName);
     log.info({ queue: queueName, messageCount, consumerCount }, 'queue ready');
-
+ 
     for (let i = 1; i <= producer.count && !stopRequested; i += 1) {
       const message = buildTrafficMessage(i);
       attempted += 1;
       try {
-        await publishPersistent(channel, queueName, message);
+        await publishMessage(channel, queueName, message, { persistent: producer.persistent });
         confirmed += 1;
         log.info(
           {
             sequence: i,
+            persistent: producer.persistent,
             messageId: message.messageId,
             locationId: message.payload.locationId,
             vehicleCount: message.payload.vehicleCount,
@@ -69,8 +72,11 @@ async function main() {
       }
       if (producer.delayMs > 0) await sleep(producer.delayMs);
     }
-
-    log.info({ requested: producer.count, attempted, confirmed, failed }, 'publish summary');
+ 
+    log.info(
+      { requested: producer.count, attempted, confirmed, failed, persistent: producer.persistent },
+      'publish summary',
+    );
     if (failed > 0) process.exitCode = 1;
   } catch (err) {
     log.error({ err }, 'fatal error');
@@ -79,5 +85,5 @@ async function main() {
     await closeQuietly(channel, connection);
   }
 }
-
+ 
 await main();
