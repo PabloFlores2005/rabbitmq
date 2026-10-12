@@ -1,8 +1,8 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import pino from 'pino';
 import { loadConfig } from './config.js';
-import { connect, createConfirmChannel, closeQuietly } from './rabbitmq/connection.js';
-import { assertQueue } from './rabbitmq/queue.js';
+import { connect, createConfirmChannel, closeQuietly } from './queue/connection.js';
+import { assertQueue } from './queue/queue.js';
 import { buildTrafficMessage } from './messages.js';
 import { publishMessage } from './publisher.js';
  
